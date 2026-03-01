@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Project Regalis — Council of Kings</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHveA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --arch:#C9832A;--arch-a:#FFD17A;
+  --expo:#1A6FBF;--expo-a:#7AC5FF;
+  --fabr:#147A52;--fabr-a:#5BFFAA;
+  --cens:#B02020;--cens-a:#FF8888;
+  --user:#8855CC;--user-a:#CC99FF;
+  --bg:#05070D;--surf:#090B14;--edge:#14161F;--muted:#3a4050;--text:#C2CCE0;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;display:flex;flex-direction:column}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.018) 2px,rgba(0,0,0,.018) 4px);
+  animation:flicker 14s infinite}
+@keyframes flicker{0%,100%{opacity:1}95%{opacity:1}96%{opacity:.88}97%{opacity:1}}
+
+/* ── HEADER ── */
+#header{flex-shrink:0;border-bottom:1px solid #1a1208;padding:10px 22px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(90deg,#090705,#0d0a06,#090705);
+  box-shadow:0 1px 24px #00000099}
+.logo{display:flex;align-items:center;gap:12px}
+.hex{width:30px;height:30px;flex-shrink:0;
+  background:linear-gradient(135deg,#C9832A,#7A4E08);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.hdr-title{font-size:12px;letter-spacing:4px;color:var(--arch);font-weight:700}
+.hdr-sub{font-size:8px;color:#3a2410;letter-spacing:2px;margin-top:2px}
+#status{display:flex;align-items:center;gap:10px;font-size:9px;letter-spacing:2px}
+#sdot{width:7px;height:7px;border-radius:50%;background:#2a3040;transition:all .4s}
+#sdot.running{background:var(--fabr);box-shadow:0 0 10px var(--fabr);animation:blink 1s infinite}
+#sdot.awaiting{background:var(--user);box-shadow:0 0 10px var(--user);animation:blink .6s infinite}
+#sdot.done{background:var(--arch)}
+#sdot.error{background:var(--cens)}
+#slabel{color:#2a3040;transition:color .4s}
+#slabel.running{color:var(--fabr)}
+#slabel.awaiting{color:var(--user)}
+#slabel.done{color:var(--arch)}
+#slabel.error{color:var(--cens)}
+#btn-new{display:none;padding:5px 12px;border:1px solid #2a1a08;background:#100c08;color:#6a5040;
+  font-size:8px;letter-spacing:2px;cursor:pointer;border-radius:2px;font-family:monospace}
+#btn-new:hover{filter:brightness(1.3)}
+
+/* ── LAYOUT ── */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ── CHAMBER ── */
+#chamber{width:570px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #1a1208}
+#chamber-bar{padding:7px 18px;font-size:8px;letter-spacing:2.5px;color:#2a1a10;
+  border-bottom:1px solid #1a1208;background:#08060A;
+  display:flex;justify-content:space-between;align-items:center;min-height:30px}
+#active-label{font-size:8px;letter-spacing:2px;display:none;animation:pulse-txt 1.4s infinite}
+@keyframes pulse-txt{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ── SCENE ── */
+#scene{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#table-svg{position:absolute;pointer-events:none}
+.agent-node{position:absolute;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:6px}
+.avatar-wrap{position:relative;width:92px;height:92px}
+.ring1,.ring2{position:absolute;border-radius:50%;border:2px solid currentColor;opacity:0;pointer-events:none}
+.ring1{inset:-10px;border-width:2px}
+.ring2{inset:-20px;border-width:1px}
+.ring1.on{opacity:.65;animation:ringout 1.9s ease-out infinite}
+.ring2.on{opacity:.3;animation:ringout 1.9s ease-out .55s infinite}
+@keyframes ringout{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.75);opacity:0}}
+.aface{width:92px;height:92px;border-radius:50%;overflow:hidden;border:3px solid currentColor;
+  transition:all .5s;background:radial-gradient(circle at 38% 32%,#1e1008,#050302);position:relative}
+.aface.on{box-shadow:0 0 26px color-mix(in srgb,currentColor 45%,transparent),
+           0 0 50px color-mix(in srgb,currentColor 18%,transparent)}
+.speak-dot{position:absolute;bottom:7px;right:7px;width:13px;height:13px;border-radius:50%;display:none;animation:blink .9s infinite}
+.think-ov{position:absolute;inset:0;border-radius:50%;display:none;align-items:center;justify-content:center;gap:4px}
+.tdot{width:6px;height:6px;border-radius:50%;animation:tdot 1.3s ease-in-out infinite}
+.tdot:nth-child(2){animation-delay:.2s}.tdot:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,100%{transform:translateY(0);opacity:.25}50%{transform:translateY(-7px);opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.tx-badge{display:none;position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;
+  background:#08060A;border:2px solid currentColor;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;font-family:monospace}
+.aname{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;transition:color .4s}
+.atitle{font-size:8px;letter-spacing:1px;transition:color .4s;margin-top:1px}
+.alabel{text-align:center}
+
+/* ── HUMAN SEAT SPECIAL ── */
+.human-node .aface{background:radial-gradient(circle at 38% 32%,#1a0e2a,#0a0614)}
+
+/* ── REVIEW GATE ── */
+#review-gate{
+  display:none;position:absolute;bottom:0;left:0;right:0;z-index:100;
+  background:linear-gradient(0deg,#0d0818ee,#0d081800);
+  padding:20px 24px 16px;
+}
+#review-card{
+  border:1px solid var(--user);border-radius:4px;
+  background:linear-gradient(135deg,#120820,#0a0614);
+  padding:14px 18px;box-shadow:0 0 30px #8855CC33;
+}
+#review-card .rtitle{font-size:9px;letter-spacing:3px;color:var(--user);margin-bottom:8px}
+#review-card .rmsg{font-size:11px;color:#bbaad0;line-height:1.65;margin-bottom:12px;font-style:italic;font-family:Georgia,serif}
+#review-input{width:100%;background:#0c0a14;border:1px solid var(--user);border-radius:3px;
+  color:var(--text);font-size:10px;line-height:1.5;padding:8px 10px;
+  resize:none;font-family:monospace;letter-spacing:.5px;margin-bottom:10px}
+#review-input:focus{outline:none;box-shadow:0 0 0 2px #8855CC33}
+.review-btns{display:flex;gap:8px}
+#btn-approve{padding:8px 18px;font-size:8px;letter-spacing:2px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--fabr);background:#0a1a12;color:var(--fabr);font-family:monospace}
+#btn-approve:hover{background:#0d2018;filter:brightness(1.2)}
+#btn-reject{padding:8px 18px;font-size:8px;letter-spacing:2px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--cens);background:#1a0808;color:var(--cens);font-family:monospace}
+#btn-reject:hover{background:#220a0a;filter:brightness(1.2)}
+#btn-skip-review{padding:8px 14px;font-size:8px;letter-spacing:2px;border-radius:2px;cursor:pointer;
+  border:1px solid #2a2040;background:transparent;color:#4a3a60;font-family:monospace;margin-left:auto}
+#btn-skip-review:hover{color:var(--user)}
+
+/* ── CONTROLS ── */
+#controls{border-top:1px solid #1a1208;padding:12px 18px;background:#08060A;flex-shrink:0}
+#input-area{display:flex;flex-direction:column;gap:10px}
+#api-key-row{display:flex;gap:8px;align-items:center}
+#api-key-label{font-size:8px;letter-spacing:2px;color:#3a2410;white-space:nowrap}
+#api-key-input{flex:1;background:#0c0a0e;border:1px solid #2a1a08;border-radius:3px;color:var(--text);
+  font-size:10px;padding:7px 10px;font-family:monospace;letter-spacing:1px}
+#api-key-input:focus{outline:none;border-color:var(--arch)}
+#task-input{width:100%;background:#0c0a0e;border:1px solid #2a1a08;border-radius:3px;color:var(--text);
+  font-size:11px;line-height:1.6;padding:9px 12px;resize:none;font-family:monospace;letter-spacing:.5px}
+#task-input:focus{outline:none;border-color:var(--arch);box-shadow:0 0 0 2px #C9832A22}
+#input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#btn-convene{padding:9px 22px;font-size:9px;letter-spacing:3px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--arch);background:linear-gradient(135deg,#C9832A,#7A4E08);color:#fff;
+  box-shadow:0 0 16px #C9832A33;transition:all .2s;font-family:monospace}
+#btn-convene:hover{filter:brightness(1.2);transform:translateY(-1px)}
+#btn-convene:disabled{background:#1a1208;border-color:#2a1a08;color:#2a1208;box-shadow:none;cursor:default;transform:none}
+.ex-btn{padding:4px 8px;font-size:7.5px;letter-spacing:1px;border-radius:2px;
+  border:1px solid #2a1a08;background:transparent;color:#4a3a2a;cursor:pointer;font-family:monospace}
+.ex-btn:hover{color:var(--arch);border-color:var(--arch)}
+#progress-row{display:none;align-items:center;gap:8px}
+.pdot{width:6px;height:6px;border-radius:3px;background:#1a2030;transition:all .4s ease}
+#prog-label{font-size:9px;color:#5a4a3a;letter-spacing:2px}
+#error-box{display:none;padding:10px 12px;border:1px solid #C92A2A44;border-radius:2px;background:#150808}
+#error-title{font-size:9px;color:#C92A2A;letter-spacing:1px;margin-bottom:4px}
+#error-msg{font-size:10px;color:#ff9999;font-family:monospace;word-break:break-word;line-height:1.6}
+
+/* ── LOG PANEL ── */
+#log-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#log-header{padding:7px 18px;font-size:8px;letter-spacing:3px;color:#2a1a10;
+  border-bottom:1px solid #1a1208;background:#08060A;
+  display:flex;justify-content:space-between;align-items:center}
+#tx-count{color:#147A5255}
+#vt{display:none;gap:4px}
+.vbtn{padding:4px 10px;font-size:7.5px;letter-spacing:1.5px;border-radius:2px;
+  border:1px solid #2a1a08;background:transparent;color:#3a2410;cursor:pointer;font-family:monospace}
+.vbtn.on{background:#C9832A22;color:var(--arch)}
+#log-scroll{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+#log-scroll::-webkit-scrollbar{width:4px}
+#log-scroll::-webkit-scrollbar-thumb{background:#2a3040;border-radius:2px}
+
+/* ── EMPTY ── */
+#empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#1a2030}
+#empty .crown{font-size:36px;opacity:.35}
+#empty .hl{font-size:10px;letter-spacing:3px}
+#empty .sub{font-size:8px;color:#111820;letter-spacing:2px;line-height:2;text-align:center}
+.apill{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:2px;font-size:8px;letter-spacing:1px}
+.apill-dot{width:6px;height:6px;border-radius:50%;opacity:.45}
+#pills{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:340px}
+
+/* ── TX ENTRY ── */
+.txe{border-radius:3px;padding:12px 14px;position:relative;overflow:hidden;animation:slidein .35s ease-out}
+@keyframes slidein{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+.txwash{position:absolute;inset:0;pointer-events:none}
+.txhead{display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative}
+.txav{width:36px;height:36px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2px solid currentColor;background:#080604}
+.txav svg{display:block}
+.txmeta{flex:1}
+.txname{font-size:9px;font-weight:700;letter-spacing:1.5px}
+.txmode{font-size:7.5px;color:#3a4050;letter-spacing:1px;margin-top:2px}
+.txbadges{text-align:right}
+.txlabel{font-size:8px;border-radius:2px;padding:2px 8px;letter-spacing:1px;border:1px solid transparent;margin-bottom:3px;display:inline-block}
+.txstat{font-size:7.5px;letter-spacing:1px}
+.txnar{margin:0;font-size:12px;line-height:1.75;color:#9aa4b4;font-style:italic;font-family:Georgia,'Times New Roman',serif}
+.txtech{margin:0;font-size:9.5px;line-height:1.8;color:#7ab8e8;white-space:pre-wrap;word-break:break-word;
+  font-family:monospace;background:#04070C;padding:10px 12px;border-radius:2px;border:1px solid #141e2a}
+.qo{font-size:18px;margin-right:4px;vertical-align:top;line-height:1.2}
+.qc{font-size:18px;margin-left:4px;vertical-align:bottom;line-height:0}
+
+/* ── HUMAN TX ENTRY ── */
+.txe.human-tx{background:#0e0a18 !important}
+
+/* ── THINKING ── */
+#thinking-el{display:none;border-radius:3px;padding:12px 14px;background:#09090F;
+  align-items:center;gap:12px;animation:slidein .3s ease-out;border-left:3px solid transparent}
+.thmini{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2px solid currentColor;background:#080604}
+.thdots{display:flex;gap:5px;align-items:center}
+.thdot{width:5px;height:5px;border-radius:50%;animation:tdot 1.3s ease-in-out infinite}
+.thdot:nth-child(2){animation-delay:.2s}.thdot:nth-child(3){animation-delay:.4s}.thdot:nth-child(4){animation-delay:.6s}
+.deliberating{font-size:8px;color:#3a4050;letter-spacing:1.5px;margin-left:6px}
+
+/* ── DONE BANNER ── */
+#done-banner{display:none;border:1px solid #C9832A44;border-radius:3px;padding:16px;text-align:center;
+  background:linear-gradient(135deg,#1a0d08,#0c0806);animation:slidein .4s ease-out}
+#done-banner .crown{font-size:22px;margin-bottom:6px}
+#done-banner .dtitle{font-size:11px;letter-spacing:4px;color:var(--arch);margin-bottom:6px}
+#done-banner .dsub{font-size:8px;color:#6a5040;letter-spacing:2px;margin-bottom:14px}
+#export-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.exp-btn{padding:8px 16px;font-size:8px;letter-spacing:2px;border-radius:2px;cursor:pointer;font-family:monospace;transition:all .2s}
+.exp-btn:hover{filter:brightness(1.25);transform:translateY(-1px)}
+.exp-btn-md{border:1px solid var(--arch);background:#1a0d08;color:var(--arch)}
+.exp-btn-zip{border:1px solid var(--fabr);background:#081408;color:var(--fabr)}
+.exp-btn-pr{border:1px solid var(--expo);background:#080e18;color:var(--expo)}
+#ctx-panel{border-top:1px solid #1a1208;background:#07090F;flex-shrink:0}
+#ctx-toggle{padding:7px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  font-size:8px;letter-spacing:2.5px;color:#2a3040;user-select:none}
+#ctx-toggle:hover{color:var(--expo)}
+#ctx-toggle .arrow{transition:transform .2s;font-size:10px}
+#ctx-body{display:none;padding:10px 18px 14px;flex-direction:column;gap:8px}
+#ctx-body.open{display:flex}
+#gh-row{display:flex;gap:6px}
+#gh-input{flex:1;background:#0c0a14;border:1px solid #2a1a08;border-radius:3px;color:var(--text);
+  font-size:10px;padding:6px 10px;font-family:monospace;letter-spacing:.5px}
+#gh-input:focus{outline:none;border-color:var(--expo)}
+#btn-gh-load{padding:6px 12px;font-size:8px;letter-spacing:1.5px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--expo);background:#080e18;color:var(--expo);font-family:monospace;white-space:nowrap}
+#btn-gh-load:hover{filter:brightness(1.2)}
+#file-drop{border:1px dashed #2a2a3a;border-radius:3px;padding:10px;text-align:center;
+  font-size:8px;letter-spacing:2px;color:#3a4050;cursor:pointer;transition:all .2s;position:relative}
+#file-drop:hover,#file-drop.drag{border-color:var(--expo);color:var(--expo);background:#080e1a}
+#file-input-real{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+#ctx-files{display:flex;flex-direction:column;gap:4px;max-height:80px;overflow-y:auto}
+.ctx-file{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 8px;background:#0c0e16;border-radius:2px;border:1px solid #1a2030}
+.ctx-file-name{font-size:8px;color:var(--expo);letter-spacing:1px;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctx-file-size{font-size:7px;color:#3a4050;margin:0 8px;white-space:nowrap}
+.ctx-rm{font-size:12px;color:#3a4050;cursor:pointer;padding:0 2px;line-height:1}
+.ctx-rm:hover{color:var(--cens)}
+#ctx-summary{font-size:8px;color:#2a4a30;letter-spacing:1.5px}
+#session-row{display:flex;gap:6px;align-items:center;margin-bottom:2px}
+#session-name{flex:1;background:transparent;border:none;border-bottom:1px solid #2a1a08;
+  color:#6a5040;font-size:9px;font-family:monospace;letter-spacing:2px;padding:3px 0}
+#session-name:focus{outline:none;border-bottom-color:var(--arch);color:var(--arch)}
+#session-name::placeholder{color:#1a1208}
+#tier-badge{font-size:7.5px;letter-spacing:2px;color:#2a3040}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo">
+    <div class="hex">♔</div>
+    <div>
+      <div class="hdr-title">PROJECT REGALIS</div>
+      <div class="hdr-sub">LIVE WAR ROOM · COUNCIL OF KINGS · CLAUDE-POWERED</div>
+    </div>
+  </div>
+  <div id="status">
+    <div id="sdot"></div>
+    <span id="slabel">AWAITING COMMAND</span>
+    <button id="btn-new" onclick="resetSession()">↺ NEW SESSION</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="chamber">
+    <div id="chamber-bar">
+      <span>COUNCIL CHAMBER</span>
+      <span id="active-label"></span>
+    </div>
+    <div id="scene">
+      <svg id="table-svg" width="560" height="560" viewBox="0 0 560 560">
+        <defs>
+          <radialGradient id="tg" cx="50%" cy="40%">
+            <stop offset="0%" stop-color="#2A1508"/>
+            <stop offset="60%" stop-color="#160A04"/>
+            <stop offset="100%" stop-color="#0A0402"/>
+          </radialGradient>
+          <radialGradient id="sheen" cx="32%" cy="26%">
+            <stop offset="0%" stop-color="#fff" stop-opacity=".065"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="cglow" cx="50%" cy="50%">
+            <stop offset="0%" stop-color="#C9832A" stop-opacity=".3" id="cglow-stop"/>
+            <stop offset="100%" stop-color="transparent" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="tshadow">
+            <feDropShadow dx="0" dy="14" stdDeviation="20" flood-opacity=".85" flood-color="#000"/>
+          </filter>
+        </defs>
+        <ellipse cx="280" cy="318" rx="180" ry="36" fill="#000" opacity=".5" style="filter:blur(24px)"/>
+        <ellipse cx="280" cy="280" rx="178" ry="174" fill="url(#tg)" filter="url(#tshadow)"/>
+        <ellipse cx="280" cy="280" rx="178" ry="174" fill="none" stroke="#5C2E08" stroke-width="8"/>
+        <ellipse cx="280" cy="280" rx="172" ry="168" fill="none" stroke="#8B4A14" stroke-width="2" opacity=".5"/>
+        <ellipse cx="280" cy="280" rx="169" ry="165" fill="none" stroke="#C9832A" stroke-width=".8" opacity=".3"/>
+        <ellipse cx="280" cy="280" rx="178" ry="174" fill="url(#sheen)"/>
+        <!-- Wood grain -->
+        <ellipse cx="280" cy="260" rx="174" ry="13" fill="none" stroke="#3A1606" stroke-width=".5" opacity=".25"/>
+        <ellipse cx="280" cy="244" rx="158" ry="12" fill="none" stroke="#3A1606" stroke-width=".5" opacity=".2"/>
+        <ellipse cx="280" cy="278" rx="168" ry="13" fill="none" stroke="#3A1606" stroke-width=".5" opacity=".25"/>
+        <ellipse cx="280" cy="296" rx="156" ry="12" fill="none" stroke="#3A1606" stroke-width=".5" opacity=".2"/>
+        <ellipse cx="280" cy="312" rx="140" ry="10" fill="none" stroke="#3A1606" stroke-width=".5" opacity=".16"/>
+        <!-- Compass -->
+        <line x1="280" y1="280" x2="280" y2="115" stroke="#C9832A" stroke-width="1.2" opacity=".28"/>
+        <line x1="280" y1="280" x2="280" y2="445" stroke="#C9832A" stroke-width="1.2" opacity=".28"/>
+        <line x1="280" y1="280" x2="115" y2="280" stroke="#C9832A" stroke-width="1.2" opacity=".28"/>
+        <line x1="280" y1="280" x2="445" y2="280" stroke="#C9832A" stroke-width="1.2" opacity=".28"/>
+        <line x1="280" y1="280" x2="163" y2="163" stroke="#C9832A" stroke-width=".5" opacity=".1"/>
+        <line x1="280" y1="280" x2="397" y2="163" stroke="#C9832A" stroke-width=".5" opacity=".1"/>
+        <line x1="280" y1="280" x2="163" y2="397" stroke="#C9832A" stroke-width=".5" opacity=".1"/>
+        <line x1="280" y1="280" x2="397" y2="397" stroke="#C9832A" stroke-width=".5" opacity=".1"/>
+        <!-- Center glow + beam layer + seat markers injected by JS -->
+        <ellipse cx="280" cy="280" rx="92" ry="90" fill="url(#cglow)" id="center-glow" opacity="0" style="transition:opacity .9s"/>
+        <g id="seat-markers"></g>
+        <g id="beam-layer"></g>
+        <!-- Center emblem -->
+        <g transform="translate(280,280)">
+          <circle r="36" fill="#0A0402" stroke="#C9832A" stroke-width="1.5" opacity=".95"/>
+          <circle r="32" fill="none" stroke="#5C2E08" stroke-width=".8"/>
+          <path d="M-13 8 L-13 -5 L-6 2 L0 -11 L6 2 L13 -5 L13 8Z" fill="#C9832A" opacity=".9"/>
+          <rect x="-13" y="8" width="26" height="4" rx="1" fill="#C9832A" opacity=".8"/>
+          <circle r="5" cy="20" id="center-dot" fill="#C9832A" opacity="0" style="transition:opacity .6s"/>
+        </g>
+      </svg>
+      <div id="agent-nodes"></div>
+      <!-- Human review gate overlay -->
+      <div id="review-gate">
+        <div id="review-card">
+          <div class="rtitle">⚠ HUMAN REVIEW REQUIRED</div>
+          <div class="rmsg" id="review-msg">The Council requests your review before proceeding.</div>
+          <textarea id="review-input" rows="2" placeholder="Add instructions, approve, or redirect the Council..."></textarea>
+          <div class="review-btns">
+            <button id="btn-approve" onclick="humanRespond('approve')">✓ APPROVE &amp; CONTINUE</button>
+            <button id="btn-reject" onclick="humanRespond('reject')">✗ REDIRECT COUNCIL</button>
+            <button id="btn-skip-review" onclick="humanRespond('skip')">SKIP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="controls">
+      <div id="error-box"><div id="error-title">⚠ TRANSMISSION FAILED</div><div id="error-msg"></div></div>
+      <div id="input-area">
+        <div id="api-key-row">
+          <span id="api-key-label">API KEY</span>
+          <input id="api-key-input" type="password" placeholder="sk-ant-..." spellcheck="false"/>
+          <span id="tier-badge">LOCAL</span>
+        </div>
+        <div id="session-row">
+          <input id="session-name" type="text" placeholder="SESSION NAME (e.g. payment-gateway-v2)" maxlength="60" spellcheck="false"/>
+        </div>
+        <textarea id="task-input" rows="2" placeholder="Describe what you want the Council to build or solve..."></textarea>
+        <div id="input-row">
+          <button id="btn-convene" onclick="conveneCouncil()">♔ CONVENE THE COUNCIL</button>
+          <div style="margin-left:auto;display:flex;gap:5px">
+            <button class="ex-btn" onclick="setEx('Build a REST API in Go with JWT auth and Postgres')">REST API Go</button>
+            <button class="ex-btn" onclick="setEx('Build a React auth flow with protected routes and refresh tokens')">React Auth</button>
+            <button class="ex-btn" onclick="setEx('Build a Python web scraper with rate limiting and retry logic')">Python Scraper</button>
+          </div>
+        </div>
+      </div>
+      <div id="progress-row">
+        <div id="prog-dots" style="display:flex;gap:4px"></div>
+        <span id="prog-label">PREPARING...</span>
+      </div>
+    </div>
+    <!-- FILE CONTEXT PANEL -->
+    <div id="ctx-panel">
+      <div id="ctx-toggle" onclick="toggleCtx()">
+        <span>⬡ CODEBASE CONTEXT <span id="ctx-count-badge"></span></span>
+        <span class="arrow">▾</span>
+      </div>
+      <div id="ctx-body">
+        <div id="gh-row">
+          <input id="gh-input" type="text" placeholder="github.com/user/repo or paste raw file URL..." spellcheck="false"/>
+          <button id="btn-gh-load" onclick="loadGithub()">⬇ LOAD</button>
+        </div>
+        <div id="file-drop" ondragover="ev.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+          <input type="file" id="file-input-real" multiple accept=".js,.ts,.jsx,.tsx,.py,.go,.rs,.java,.cs,.cpp,.c,.h,.sql,.md,.txt,.json,.yaml,.yml,.toml,.env.example,.sh" onchange="handleFiles(this.files)"/>
+          DROP FILES HERE OR CLICK TO BROWSE · .js .ts .py .go .rs .sql .md and more
+        </div>
+        <div id="ctx-files"></div>
+        <div id="ctx-summary"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="log-panel">
+    <div id="log-header">
+      <span>LIVE DISPATCH LOG</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="tx-count">0 TRANSMISSIONS</span>
+        <div id="vt">
+          <button class="vbtn on" onclick="setView('narrative')">⚔ NARR</button>
+          <button class="vbtn" onclick="setView('technical')">⌨ TECH</button>
+        </div>
+      </div>
+    </div>
+    <div id="log-scroll">
+      <div id="empty">
+        <div class="crown">♔</div>
+        <div class="hl">THE CHAMBER AWAITS YOUR COMMAND</div>
+        <div class="sub">ENTER YOUR API KEY + TASK<br/>THE COUNCIL WILL ASSEMBLE<br/>FIVE SEATS · FOUR KINGS · ONE COMMANDER</div>
+        <div id="pills"></div>
+      </div>
+      <div id="thinking-el"></div>
+      <div id="tx-list"></div>
+      <div id="done-banner">
+        <div class="crown">♔</div>
+        <div class="dtitle">THE COUNCIL HAS SPOKEN</div>
+        <div class="dsub" id="done-sub"></div>
+        <div id="export-btns">
+          <button class="exp-btn exp-btn-md" onclick="exportMarkdown()">⬇ DECISION RECORD (.md)</button>
+          <button class="exp-btn exp-btn-zip" onclick="exportZip()">⬇ CODE FILES (.zip)</button>
+          <button class="exp-btn exp-btn-pr" onclick="exportPR()">⬇ PR DESCRIPTION (.txt)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   SVG PORTRAITS — dramatically redrawn, more epic
+══════════════════════════════════════════════════════ */
+const FACES = {
+  /* REX ARCHITECTUS — full battle-plate general, laurel wreath hammered in gold */
+  arch:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Neck + strong shoulders -->
+  <rect x="32" y="62" width="28" height="14" rx="3" fill="#A07040"/>
+  <!-- Battle plate gorget -->
+  <path d="M20 72 Q22 60 32 58 L60 58 Q70 60 72 72 L72 92 Q46 96 20 92Z" fill="#8B6A10"/>
+  <path d="M25 72 Q27 62 35 60 L57 60 Q65 62 67 72" fill="none" stroke="#C9932A" stroke-width="1.5"/>
+  <!-- Center chest plate ridge -->
+  <line x1="46" y1="60" x2="46" y2="80" stroke="#C9932A" stroke-width="1.5" opacity=".7"/>
+  <!-- Pauldron hints -->
+  <ellipse cx="22" cy="68" rx="8" ry="5" fill="#7A5A0A" transform="rotate(-15,22,68)"/>
+  <ellipse cx="70" cy="68" rx="8" ry="5" fill="#7A5A0A" transform="rotate(15,70,68)"/>
+  <!-- Face — broad, commanding -->
+  <ellipse cx="46" cy="40" rx="20" ry="22" fill="#C8906A"/>
+  <!-- Deep-set eyes under heavy brow -->
+  <ellipse cx="38" cy="37" rx="5" ry="5.5" fill="#0A0600"/>
+  <ellipse cx="54" cy="37" rx="5" ry="5.5" fill="#0A0600"/>
+  <ellipse cx="38.8" cy="35.5" rx="2" ry="2.5" fill="#fff" opacity=".55"/>
+  <ellipse cx="54.8" cy="35.5" rx="2" ry="2.5" fill="#fff" opacity=".55"/>
+  <!-- Battle scar across left cheek -->
+  <path d="M30 38 Q34 42 33 48" stroke="#9A6040" stroke-width="1.2" fill="none" opacity=".8"/>
+  <!-- Strong jaw, square -->
+  <path d="M28 50 Q30 62 46 66 Q62 62 64 50" fill="#B87850"/>
+  <!-- Full beard, battle-worn -->
+  <path d="M30 48 Q28 58 32 64 Q40 70 46 71 Q52 70 60 64 Q64 58 62 48 Q54 55 46 56 Q38 55 30 48Z" fill="#4A2E10" opacity=".9"/>
+  <path d="M38 56 Q46 62 54 56" stroke="#6A4020" stroke-width="1" fill="none" opacity=".5"/>
+  <!-- Heavy brow ridge — gold-tipped like a general's helm -->
+  <path d="M28 30 Q34 24 44 27" stroke="#2A1A06" stroke-width="3.5" fill="none"/>
+  <path d="M48 27 Q58 24 64 30" stroke="#2A1A06" stroke-width="3.5" fill="none"/>
+  <!-- Laurel wreath crown — hammered gold -->
+  <path d="M26 24 Q24 14 30 12 Q34 10 36 14" stroke="#C9932A" stroke-width="2" fill="none"/>
+  <path d="M36 14 Q38 8 42 9 Q44 6 46 8" stroke="#C9932A" stroke-width="2.2" fill="none"/>
+  <path d="M46 8 Q48 6 50 9 Q54 8 56 14" stroke="#C9932A" stroke-width="2.2" fill="none"/>
+  <path d="M56 14 Q58 10 62 12 Q68 14 66 24" stroke="#C9932A" stroke-width="2" fill="none"/>
+  <circle cx="46" cy="8" r="3.5" fill="#C9932A"/>
+  <circle cx="30" cy="12" r="2" fill="#C9932A" opacity=".7"/>
+  <circle cx="62" cy="12" r="2" fill="#C9932A" opacity=".7"/>
+  <!-- Nose, strong -->
+  <path d="M43 40 L42 52 Q46 55 50 52 L49 40" fill="#B87850" opacity=".4"/>
+  <!-- Grim mouth -->
+  <path d="M36 55 Q46 60 56 55" stroke="#7A4A28" stroke-width="1.8" fill="none"/>
+</svg>`,
+
+  /* REX EXPLORATOR — hooded ranger, asymmetric, weathered map-reader */
+  expo:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Deep hood sweeping -->
+  <path d="M10 30 Q8 10 46 6 Q84 10 82 30 Q78 20 46 18 Q14 20 10 30Z" fill="#0E2040" opacity=".95"/>
+  <path d="M12 34 Q10 16 46 12 Q82 16 80 34" fill="none" stroke="#1A6FBF" stroke-width="1.5" opacity=".6"/>
+  <!-- Cloak body -->
+  <path d="M14 62 Q12 50 20 46 L72 46 Q80 50 78 62 L80 92 Q46 96 12 92Z" fill="#0A1A38"/>
+  <path d="M16 62 Q14 52 22 48 L70 48 Q78 52 76 62" fill="none" stroke="#1A6FBF" stroke-width="1" opacity=".4"/>
+  <!-- Neck -->
+  <rect x="34" y="58" width="24" height="10" rx="2" fill="#A0785A"/>
+  <!-- Face — sharper, leaner, intelligence in the eyes -->
+  <ellipse cx="46" cy="38" rx="18" ry="20" fill="#B07848"/>
+  <!-- Deeply shadowed eyes — scout who has seen much -->
+  <ellipse cx="38" cy="35" rx="4.5" ry="5" fill="#06111E"/>
+  <ellipse cx="54" cy="35" rx="4.5" ry="5" fill="#06111E"/>
+  <ellipse cx="38.5" cy="33.5" rx="1.8" ry="2.2" fill="#fff" opacity=".65"/>
+  <ellipse cx="54.5" cy="33.5" rx="1.8" ry="2.2" fill="#fff" opacity=".65"/>
+  <!-- Iris glint — electric blue -->
+  <circle cx="39.5" cy="35" r="1.4" fill="#1A6FBF" opacity=".8"/>
+  <circle cx="55.5" cy="35" r="1.4" fill="#1A6FBF" opacity=".8"/>
+  <!-- Thin upward brows — perpetually curious -->
+  <path d="M30 28 Q35 23 42 26" stroke="#2A1408" stroke-width="2" fill="none"/>
+  <path d="M50 26 Q57 23 62 28" stroke="#2A1408" stroke-width="2" fill="none"/>
+  <!-- Hollow cheeks, lean jaw -->
+  <path d="M28 46 Q30 60 46 64 Q62 60 64 46" fill="#A07040" opacity=".5"/>
+  <!-- Scruff / not full beard -->
+  <path d="M32 50 Q34 60 38 63 Q46 67 54 63 Q58 60 60 50" fill="#3A2010" opacity=".6"/>
+  <!-- Spyglass earring left -->
+  <ellipse cx="25" cy="40" rx="3" ry="3" fill="none" stroke="#1A6FBF" stroke-width="1.5"/>
+  <line x1="25" y1="43" x2="25" y2="50" stroke="#1A6FBF" stroke-width="1.2"/>
+  <!-- Map scroll tucked at collar -->
+  <rect x="38" y="56" width="16" height="5" rx="1.5" fill="#C8A860" opacity=".85"/>
+  <line x1="41" y1="57" x2="41" y2="60" stroke="#8A6030" stroke-width=".8"/>
+  <line x1="44" y1="57" x2="44" y2="60" stroke="#8A6030" stroke-width=".8"/>
+  <!-- Nose -->
+  <path d="M44 38 L43 50 Q46 53 49 50 L48 38" fill="#A07040" opacity=".35"/>
+  <!-- Determined thin mouth -->
+  <path d="M36 53 Q46 58 56 53" stroke="#7A4A28" stroke-width="1.5" fill="none"/>
+</svg>`,
+
+  /* REX FABRICATOR — forge-master, massive build, blacksmith hammer over shoulder */
+  fabr:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Neck -->
+  <rect x="30" y="60" width="32" height="14" rx="3" fill="#8A6030"/>
+  <!-- Heavy forge apron + body -->
+  <path d="M14 70 Q12 56 24 54 L68 54 Q80 56 78 70 L80 92 Q46 96 12 92Z" fill="#1E2E1A"/>
+  <!-- Leather straps across chest -->
+  <path d="M24 56 L36 72" stroke="#4A3A18" stroke-width="2.5" opacity=".8"/>
+  <path d="M68 56 L56 72" stroke="#4A3A18" stroke-width="2.5" opacity=".8"/>
+  <path d="M32 58 Q46 62 60 58" stroke="#3A2E14" stroke-width="2" fill="none" opacity=".6"/>
+  <!-- Massive hammer over right shoulder -->
+  <rect x="68" y="34" width="7" height="22" rx="3" fill="#7A6040"/>
+  <rect x="64" y="30" width="15" height="7" rx="2" fill="#4A3820"/>
+  <!-- Face — broad skull, heavy set, powerful -->
+  <ellipse cx="46" cy="38" rx="22" ry="23" fill="#9A6A38"/>
+  <!-- Heavy brow ridge -->
+  <path d="M24 30 Q30 22 42 26" stroke="#1A0E04" stroke-width="4" fill="none"/>
+  <path d="M50 26 Q62 22 68 30" stroke="#1A0E04" stroke-width="4" fill="none"/>
+  <!-- Deep powerful eyes -->
+  <ellipse cx="37" cy="36" rx="5.5" ry="5.5" fill="#0E0800"/>
+  <ellipse cx="55" cy="36" rx="5.5" ry="5.5" fill="#0E0800"/>
+  <ellipse cx="37.8" cy="34.2" rx="2.2" ry="2.5" fill="#fff" opacity=".5"/>
+  <ellipse cx="55.8" cy="34.2" rx="2.2" ry="2.5" fill="#fff" opacity=".5"/>
+  <!-- Forge-ember glow in eyes -->
+  <circle cx="38" cy="36" r="1.5" fill="#1F9E6A" opacity=".6"/>
+  <circle cx="56" cy="36" r="1.5" fill="#1F9E6A" opacity=".6"/>
+  <!-- War scar across bridge of nose -->
+  <path d="M40 32 Q46 30 52 32" stroke="#7A4A20" stroke-width="1" fill="none" opacity=".5"/>
+  <line x1="44" y1="30" x2="46" y2="36" stroke="#8A5028" stroke-width="1.2" opacity=".7"/>
+  <!-- Massive full beard, matted -->
+  <path d="M24 48 Q22 62 28 68 Q36 76 46 78 Q56 76 64 68 Q70 62 68 48 Q58 57 46 58 Q34 57 24 48Z" fill="#2E1A08" opacity=".95"/>
+  <path d="M34 60 Q46 68 58 60" stroke="#4A2A10" stroke-width="1.2" fill="none" opacity=".4"/>
+  <path d="M30 52 Q32 66 36 70" stroke="#4A2A10" stroke-width=".8" fill="none" opacity=".3"/>
+  <path d="M62 52 Q60 66 56 70" stroke="#4A2A10" stroke-width=".8" fill="none" opacity=".3"/>
+  <!-- Nose — big, broken once -->
+  <path d="M43 38 L41 52 Q46 56 51 52 L49 38" fill="#8A5A28" opacity=".45"/>
+  <!-- Smirk — confident craftsman -->
+  <path d="M32 58 Q40 64 56 58" stroke="#6A3A18" stroke-width="2" fill="none"/>
+</svg>`,
+
+  /* REX CENSOR — inquisitor, silver-templed, monocle, severe */
+  cens:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Neck -->
+  <rect x="32" y="60" width="28" height="12" rx="2" fill="#8A6840"/>
+  <!-- Dark inquisitor robes -->
+  <path d="M12 68 Q10 54 22 52 L70 52 Q82 54 80 68 L82 92 Q46 96 10 92Z" fill="#1A0808"/>
+  <path d="M14 68 Q12 56 24 54 L68 54 Q80 56 78 68" fill="none" stroke="#B02020" stroke-width="1.2" opacity=".5"/>
+  <!-- Shield crest on chest -->
+  <path d="M38 58 Q46 54 54 58 L54 70 Q46 75 38 70Z" fill="#B02020" opacity=".65"/>
+  <path d="M42 60 Q46 57 50 60 L50 68 Q46 71 42 68Z" fill="none" stroke="#FF4040" stroke-width=".8" opacity=".5"/>
+  <!-- Silver epaulette left -->
+  <path d="M12 58 Q16 50 24 52" stroke="#C0C0C0" stroke-width="3" fill="none" opacity=".7"/>
+  <path d="M80 58 Q76 50 68 52" stroke="#C0C0C0" stroke-width="3" fill="none" opacity=".7"/>
+  <!-- Face — angular, severe, elder -->
+  <ellipse cx="46" cy="37" rx="19" ry="21" fill="#9A7050"/>
+  <!-- Deep-lined face — age lines -->
+  <path d="M26 36 Q28 30 32 28" stroke="#7A5030" stroke-width=".8" fill="none" opacity=".5"/>
+  <path d="M66 36 Q64 30 60 28" stroke="#7A5030" stroke-width=".8" fill="none" opacity=".5"/>
+  <!-- Sharp angular brows — judgmental -->
+  <path d="M28 28 Q34 22 42 26" stroke="#0E0606" stroke-width="3" fill="none"/>
+  <path d="M50 26 Q58 22 64 28" stroke="#0E0606" stroke-width="3" fill="none"/>
+  <!-- Cold piercing eyes -->
+  <ellipse cx="37" cy="35" rx="4.5" ry="5" fill="#060000"/>
+  <ellipse cx="55" cy="35" rx="4.5" ry="5" fill="#060000"/>
+  <ellipse cx="37.5" cy="33.2" rx="1.8" ry="2" fill="#fff" opacity=".7"/>
+  <ellipse cx="55.5" cy="33.2" rx="1.8" ry="2" fill="#fff" opacity=".7"/>
+  <!-- Blood-red iris glint -->
+  <circle cx="38.5" cy="35.5" r="1.5" fill="#B02020" opacity=".75"/>
+  <circle cx="56.5" cy="35.5" r="1.5" fill="#B02020" opacity=".75"/>
+  <!-- Monocle — right eye -->
+  <circle cx="55" cy="35" r="7.5" fill="none" stroke="#B02020" stroke-width="1.8" opacity=".85"/>
+  <line x1="62" y1="40" x2="66" y2="46" stroke="#B02020" stroke-width="1.4" opacity=".8"/>
+  <!-- Silver streaked temples -->
+  <path d="M26 32 Q24 24 28 18" stroke="#D0D0D0" stroke-width="2.5" fill="none" opacity=".8"/>
+  <path d="M66 32 Q68 24 64 18" stroke="#D0D0D0" stroke-width="2.5" fill="none" opacity=".8"/>
+  <!-- Thin pressed lips — disapproval -->
+  <path d="M34 52 Q46 56 58 52" stroke="#6A3030" stroke-width="2" fill="none"/>
+  <!-- Pointed goatee -->
+  <path d="M38 56 Q40 64 46 68 Q52 64 54 56 Q50 60 46 61 Q42 60 38 56Z" fill="#282020" opacity=".9"/>
+  <!-- Sharp nose -->
+  <path d="M43 37 L41 51 Q46 54 51 51 L49 37" fill="#8A6030" opacity=".4"/>
+</svg>`,
+
+  /* HUMAN COMMANDER — the user's seat — distinguished, modern, observant */
+  user:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Neck -->
+  <rect x="33" y="60" width="26" height="12" rx="2" fill="#A08060"/>
+  <!-- Commander uniform — dark with purple trim -->
+  <path d="M14 68 Q12 54 24 52 L68 52 Q80 54 78 68 L80 92 Q46 96 12 92Z" fill="#16102A"/>
+  <!-- Collar detail -->
+  <path d="M36 54 L30 68" stroke="#8855CC" stroke-width="1.5" opacity=".7"/>
+  <path d="M56 54 L62 68" stroke="#8855CC" stroke-width="1.5" opacity=".7"/>
+  <!-- Rank badge / circuit pattern on chest -->
+  <rect x="40" y="58" width="12" height="8" rx="1" fill="none" stroke="#8855CC" stroke-width="1" opacity=".6"/>
+  <line x1="43" y1="60" x2="43" y2="64" stroke="#CC99FF" stroke-width=".8" opacity=".5"/>
+  <line x1="46" y1="59" x2="46" y2="65" stroke="#CC99FF" stroke-width=".8" opacity=".5"/>
+  <line x1="49" y1="60" x2="49" y2="64" stroke="#CC99FF" stroke-width=".8" opacity=".5"/>
+  <!-- Face — alert, present, modern human -->
+  <ellipse cx="46" cy="38" rx="19" ry="21" fill="#C09070"/>
+  <!-- Alert upright brows -->
+  <path d="M28 28 Q34 24 42 27" stroke="#2A1A0A" stroke-width="2.5" fill="none"/>
+  <path d="M50 27 Q58 24 64 28" stroke="#2A1A0A" stroke-width="2.5" fill="none"/>
+  <!-- Observant eyes — wide, present -->
+  <ellipse cx="37" cy="35" rx="5" ry="5.5" fill="#1A1008"/>
+  <ellipse cx="55" cy="35" rx="5" ry="5.5" fill="#1A1008"/>
+  <ellipse cx="37.5" cy="33" rx="2" ry="2.5" fill="#fff" opacity=".75"/>
+  <ellipse cx="55.5" cy="33" rx="2" ry="2.5" fill="#fff" opacity=".75"/>
+  <!-- Purple-tinted iris — the commander sees through AI eyes -->
+  <circle cx="38.5" cy="35.5" r="1.6" fill="#8855CC" opacity=".8"/>
+  <circle cx="56.5" cy="35.5" r="1.6" fill="#8855CC" opacity=".8"/>
+  <!-- Clean-cut features -->
+  <path d="M44 38 L43 50 Q46 54 49 50 L48 38" fill="#B08050" opacity=".35"/>
+  <!-- Thoughtful half-smile -->
+  <path d="M34 53 Q46 59 58 53" stroke="#7A4A28" stroke-width="1.8" fill="none"/>
+  <!-- Short neat hair / no elaborate crown — just the commander -->
+  <path d="M26 22 Q28 10 46 8 Q64 10 66 22 Q60 14 46 12 Q32 14 26 22Z" fill="#2A1A0A" opacity=".9"/>
+  <!-- Commander's sigil earring -->
+  <polygon points="24,36 26,30 28,36 26,40" fill="#8855CC" opacity=".7"/>
+</svg>`,
+};
+
+/* ══════════════════════════════════════════════════════
+   AGENTS + SEQUENCE
+══════════════════════════════════════════════════════ */
+const ALL_NODES = [
+  {id:'arch',seat:0,name:'Rex Architectus',title:'Strategic Lead',color:'#C9832A',accent:'#FFD17A',isHuman:false,
+   system:`You are REX ARCHITECTUS, the Strategic Lead of the Council of Kings.
+ONLY define project structure, folder layout, milestones, and component boundaries. Never write implementation code.
+Respond in EXACTLY this format:
+
+[NARRATIVE]: <1-3 sentences. Commanding general mapping territory.>
+
+[TECHNICAL]:
+<Folder tree or milestone list. ASCII only. Precise and complete.>`},
+  {id:'expo',seat:1,name:'Rex Explorator',title:'Intelligence Scout',color:'#1A6FBF',accent:'#7AC5FF',isHuman:false,
+   system:`You are REX EXPLORATOR, the Intelligence Scout of the Council of Kings.
+ONLY research requirements, verify library versions, surface API gotchas. Never write app code.
+Respond in EXACTLY this format:
+
+[NARRATIVE]: <1-3 sentences. Scout returning with critical intel.>
+
+[TECHNICAL]:
+<Verified findings: library names, versions, API signatures, critical warnings.>`},
+  {id:'fabr',seat:2,name:'Rex Fabricator',title:'Master Builder',color:'#147A52',accent:'#5BFFAA',isHuman:false,
+   system:`You are REX FABRICATOR, the Master Builder of the Council of Kings.
+Write complete, runnable production code. No pseudocode. No placeholders.
+Base your work on the Architect's map and Explorator's intel from prior transmissions.
+Respond in EXACTLY this format:
+
+[NARRATIVE]: <1-3 sentences. Forge-master shaping steel.>
+
+[TECHNICAL]:
+<Complete production code. Filename as comment at top.>`},
+  {id:'cens',seat:3,name:'Rex Censor',title:'Security Auditor',color:'#B02020',accent:'#FF8888',isHuman:false,
+   system:`You are REX CENSOR, mandatory Security Auditor of the Council of Kings.
+Audit every code block for: hardcoded secrets, SQL injection, missing auth, CORS issues, unencrypted PII, missing rate limits, improper error handling. Never rubber-stamp.
+Respond in EXACTLY this format:
+
+[NARRATIVE]: <1-3 sentences. Iron wall. Grave and exacting.>
+
+[TECHNICAL]:
+<PASS/WARN/FAIL [CODE-###] findings.
+Final line: STATUS: ✅ ALL CLEAR / ⚠ CONDITIONAL PASS (N warnings) / 🚫 BLOCKED (N failures)>`},
+  {id:'user',seat:4,name:'Commander',title:'Human Authority',color:'#8855CC',accent:'#CC99FF',isHuman:true,system:null},
+];
+
+const AGENTS = ALL_NODES.filter(n=>!n.isHuman);
+const HUMAN  = ALL_NODES.find(n=>n.isHuman);
+const TOTAL_SEATS = 5;
+
+/* Sequence — includes a human review checkpoint after Fabricator's first build */
+const SEQUENCE = [
+  {agentId:'arch', toId:null,          mode:'broadcast', label:'MAPPING TERRITORY'},
+  {agentId:'expo', toId:'arch',        mode:'peer',      label:'SCOUTING INTEL'},
+  {agentId:'fabr', toId:null,          mode:'broadcast', label:'FORGING CORE'},
+  {agentId:'user', toId:'fabr',        mode:'peer',      label:'HUMAN REVIEW',    isHumanGate:true,
+   gateMsg:'Rex Fabricator has completed the initial build. Review the output and direct the Council.'},
+  {agentId:'cens', toId:'fabr',        mode:'peer',      label:'SECURITY AUDIT'},
+  {agentId:'fabr', toId:'cens',        mode:'peer',      label:'RESOLVING FINDINGS'},
+  {agentId:'cens', toId:'user',        mode:'peer',      label:'FINAL SEAL'},
+];
+
+/* ══════════════════════════════════════════════════════
+   GEOMETRY — 5 seats evenly spaced
+══════════════════════════════════════════════════════ */
+function seatAngle(seat){return(seat*(360/TOTAL_SEATS)-90)*Math.PI/180}
+function seatPos(seat,r){return{x:Math.cos(seatAngle(seat))*r,y:Math.sin(seatAngle(seat))*r}}
+
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+let phase='idle';
+let viewMode='narrative';
+let transmissions=[];
+let activeSeqIdx=-1;
+let humanResolve=null;
+let txCounts={arch:0,expo:0,fabr:0,cens:0,user:0};
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+function init(){
+  const markers=document.getElementById('seat-markers');
+  ALL_NODES.forEach(ag=>{
+    const p=seatPos(ag.seat,178);
+    markers.innerHTML+=`
+      <circle id="seat-${ag.id}" cx="${280+p.x}" cy="${280+p.y}" r="11"
+        fill="#09060A" stroke="${ag.color}" stroke-width="1" opacity=".9"/>
+      <circle id="dot-${ag.id}" cx="${280+p.x}" cy="${280+p.y}" r="5"
+        fill="${ag.color}" opacity=".3"/>`;
+  });
+
+  const nodesEl=document.getElementById('agent-nodes');
+  ALL_NODES.forEach(ag=>{
+    const p=seatPos(ag.seat,240);
+    const node=document.createElement('div');
+    node.className='agent-node'+(ag.isHuman?' human-node':'');
+    node.id=`node-${ag.id}`;
+    node.style.left=(280+p.x)+'px';
+    node.style.top=(280+p.y)+'px';
+    node.style.color=ag.color;
+    node.innerHTML=`
+      <div class="avatar-wrap">
+        <div class="ring1" id="ring1-${ag.id}" style="color:${ag.color}"></div>
+        <div class="ring2" id="ring2-${ag.id}" style="color:${ag.color}"></div>
+        <div class="aface" id="face-${ag.id}" style="border-color:${ag.color}44;color:${ag.color}">
+          ${FACES[ag.id]}
+          <div class="speak-dot" id="speak-${ag.id}" style="background:${ag.color};box-shadow:0 0 8px ${ag.color}"></div>
+          <div class="think-ov" id="think-${ag.id}" style="background:${ag.color}22">
+            <div class="tdot" style="background:${ag.color}"></div>
+            <div class="tdot" style="background:${ag.color}"></div>
+            <div class="tdot" style="background:${ag.color}"></div>
+          </div>
+        </div>
+        <div class="tx-badge" id="badge-${ag.id}" style="color:${ag.color};border-color:${ag.color}">${ag.isHuman?'👤':'0'}</div>
+      </div>
+      <div class="alabel">
+        <div class="aname" id="aname-${ag.id}" style="color:#4a5060">${ag.name.replace('Rex ','')}</div>
+        <div class="atitle" id="atitle-${ag.id}" style="color:${ag.color}44">${ag.title}</div>
+      </div>`;
+    nodesEl.appendChild(node);
+  });
+
+  const pills=document.getElementById('pills');
+  ALL_NODES.forEach(ag=>{
+    pills.innerHTML+=`<div class="apill" style="border:1px solid ${ag.color}33;color:${ag.color}88">
+      <div class="apill-dot" style="background:${ag.color}"></div>${ag.name}</div>`;
+  });
+
+  const pd=document.getElementById('prog-dots');
+  SEQUENCE.forEach((_,i)=>{pd.innerHTML+=`<div class="pdot" id="pdot-${i}"></div>`});
+
+  document.getElementById('task-input').addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter')conveneCouncil();
+  });
+  // Context panel collapsed by default, open on first interaction
+  document.getElementById('ctx-body').classList.remove('open');
+}
+
+/* ══════════════════════════════════════════════════════
+   VISUAL UPDATES
+══════════════════════════════════════════════════════ */
+function setActive(agentId,toId){
+  ALL_NODES.forEach(ag=>{
+    const isA=ag.id===agentId,isP=ag.id===toId,pulse=isA||isP;
+    document.getElementById(`ring1-${ag.id}`).className='ring1'+(pulse?' on':'');
+    document.getElementById(`ring2-${ag.id}`).className='ring2'+(pulse?' on':'');
+    const f=document.getElementById(`face-${ag.id}`);
+    f.style.borderColor=pulse?ag.color:ag.color+'44';
+    f.className='aface'+(isA?' on':'');
+    f.style.setProperty('--tw-shadow','');
+    if(isA)f.style.boxShadow=`0 0 28px ${ag.color}55,0 0 54px ${ag.color}1A`;
+    else f.style.boxShadow='none';
+    document.getElementById(`aname-${ag.id}`).style.color=pulse?ag.accent:'#4a5060';
+    document.getElementById(`atitle-${ag.id}`).style.color=pulse?ag.color+'bb':ag.color+'44';
+    document.getElementById(`seat-${ag.id}`).setAttribute('stroke-width',isA?3.5:1);
+    document.getElementById(`dot-${ag.id}`).setAttribute('opacity',isA?1:isP?.6:.3);
+  });
+
+  const bl=document.getElementById('beam-layer');
+  bl.innerHTML='';
+  if(agentId){
+    const fAg=ALL_NODES.find(a=>a.id===agentId);
+    const tAg=toId?ALL_NODES.find(a=>a.id===toId):null;
+    const from=seatPos(fAg.seat,176);
+    const to=tAg?seatPos(tAg.seat,176):{x:0,y:0};
+    const x1=280+from.x,y1=280+from.y,x2=280+to.x,y2=280+to.y;
+    bl.innerHTML=`
+      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${fAg.color}" stroke-width="12" opacity=".06" style="filter:blur(10px)"/>
+      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${fAg.color}" stroke-width="${tAg?1.8:2.2}" stroke-dasharray="${tAg?'8 5':'none'}" opacity=".9">
+        <animate attributeName="opacity" values=".9;.4;.9" dur="1.9s" repeatCount="indefinite"/>
+      </line>
+      <circle r="5.5" fill="${fAg.color}" opacity=".95" style="filter:drop-shadow(0 0 8px ${fAg.color})">
+        <animateMotion dur="1.5s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}"/>
+      </circle>`;
+    document.getElementById('cglow-stop').setAttribute('stop-color',fAg.color);
+    document.getElementById('center-glow').style.opacity='1';
+    document.getElementById('center-dot').style.opacity='1';
+    document.getElementById('center-dot').setAttribute('fill',fAg.color);
+    const al=document.getElementById('active-label');
+    al.style.display='block';
+    al.style.color=fAg.color;
+    al.textContent='⟶ '+(SEQUENCE[activeSeqIdx]?.label||'');
+  } else {
+    document.getElementById('center-glow').style.opacity='0';
+    document.getElementById('center-dot').style.opacity='0';
+    document.getElementById('active-label').style.display='none';
+  }
+}
+
+function setThinking(agentId){
+  ALL_NODES.forEach(ag=>{
+    document.getElementById(`think-${ag.id}`).style.display=ag.id===agentId?'flex':'none';
+    if(ag.id!==agentId)document.getElementById(`speak-${ag.id}`).style.display='none';
+  });
+  const el=document.getElementById('thinking-el');
+  if(agentId){
+    const ag=ALL_NODES.find(a=>a.id===agentId);
+    el.style.display='flex';
+    el.style.borderLeftColor=ag.color;
+    el.style.color=ag.color;
+    el.innerHTML=`
+      <div class="thmini" style="border-color:${ag.color}">${FACES[ag.id]}</div>
+      <div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:${ag.accent};margin-bottom:5px">${ag.name.toUpperCase()}</div>
+        <div class="thdots">
+          <div class="thdot" style="background:${ag.color}"></div>
+          <div class="thdot" style="background:${ag.color}"></div>
+          <div class="thdot" style="background:${ag.color}"></div>
+          <div class="thdot" style="background:${ag.color}"></div>
+          <span class="deliberating">DELIBERATING...</span>
+        </div>
+      </div>`;
+    scrollLog();
+  } else {
+    el.style.display='none';
+  }
+}
+
+function setSpeaking(agentId){
+  const el=document.getElementById(`speak-${agentId}`);
+  if(el){el.style.display='block';setTimeout(()=>{el.style.display='none'},2200)}
+  document.getElementById(`think-${agentId}`).style.display='none';
+}
+
+function updateBadge(agentId){
+  txCounts[agentId]=(txCounts[agentId]||0)+1;
+  const b=document.getElementById(`badge-${agentId}`);
+  b.style.display='flex';
+  if(!ALL_NODES.find(a=>a.id===agentId)?.isHuman)b.textContent=txCounts[agentId];
+}
+
+function updateProgress(idx){
+  SEQUENCE.forEach((_,i)=>{
+    const d=document.getElementById(`pdot-${i}`);
+    const ag=ALL_NODES.find(a=>a.id===SEQUENCE[i].agentId);
+    if(i<idx){d.style.width='10px';d.style.background=ag.color;d.style.boxShadow='none'}
+    else if(i===idx){d.style.width='28px';d.style.background=ag.color;d.style.boxShadow=`0 0 8px ${ag.color}`}
+    else{d.style.width='6px';d.style.background='#1a2030';d.style.boxShadow='none'}
+  });
+  document.getElementById('prog-label').textContent=SEQUENCE[idx]?.label||'PREPARING...';
+}
+
+function setStatus(s){
+  document.getElementById('sdot').className=s;
+  document.getElementById('slabel').className=s;
+  const L={idle:'AWAITING COMMAND',running:'COUNCIL IN SESSION',awaiting:'AWAITING HUMAN REVIEW',done:'MISSION SEALED',error:'TRANSMISSION FAILED'};
+  document.getElementById('slabel').textContent=L[s]||s;
+  document.getElementById('btn-new').style.display=s!=='idle'?'block':'none';
+}
+
+function scrollLog(){setTimeout(()=>{const e=document.getElementById('log-scroll');e.scrollTop=e.scrollHeight},60)}
+
+/* ══════════════════════════════════════════════════════
+   LOG ENTRIES
+══════════════════════════════════════════════════════ */
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function appendTx(tx){
+  document.getElementById('empty').style.display='none';
+  document.getElementById('thinking-el').style.display='none';
+  const sColor=tx.status==='fail'?'#B02020':tx.status==='warn'?'#C9832A':tx.status==='pass'?'#147A52':tx.agent.color;
+  const bg=tx.status==='fail'?'#130606':tx.status==='warn'?'#120E06':tx.status==='pass'?'#061208':tx.agent.isHuman?'#0E0A18':'#090B12';
+  const statBadge=tx.status==='pass'?`<div class="txstat" style="color:#147A52">✓ CLEAR</div>`
+    :tx.status==='warn'?`<div class="txstat" style="color:#C9832A">⚠ CONDITIONAL</div>`
+    :tx.status==='fail'?`<div class="txstat" style="color:#B02020">🚫 BLOCKED</div>`
+    :tx.agent.isHuman?`<div class="txstat" style="color:${tx.agent.color}">👤 HUMAN INPUT</div>`:'';
+  const modeLabel=tx.toAgent
+    ?`⇢ ${tx.toAgent.name.replace('Rex ','').toUpperCase()} · PEER`
+    :'⟶ ALL KINGS · BROADCAST';
+
+  const el=document.createElement('div');
+  el.className='txe'+(tx.agent.isHuman?' human-tx':'');
+  el.id=`tx-${tx.id}`;
+  el.style.cssText=`border:1px solid ${sColor}33;border-left:3px solid ${tx.agent.color};background:${bg}`;
+  el.innerHTML=`
+    <div class="txwash" style="background:radial-gradient(circle at 0% 50%,${tx.agent.color}07,transparent 55%)"></div>
+    <div class="txhead">
+      <div class="txav" style="border-color:${tx.agent.color};box-shadow:0 0 10px ${tx.agent.color}44">${FACES[tx.agent.id]}</div>
+      <div class="txmeta">
+        <div class="txname" style="color:${tx.agent.accent}">${tx.agent.name.toUpperCase()}</div>
+        <div class="txmode">${modeLabel}</div>
+      </div>
+      <div class="txbadges">
+        <div class="txlabel" style="color:${tx.agent.color};border-color:${tx.agent.color}33">${tx.label}</div>
+        ${statBadge}
+      </div>
+    </div>
+    <p class="txnar" style="display:${viewMode==='narrative'?'block':'none'}">
+      <span class="qo" style="color:${tx.agent.color}">"</span>${tx.narrative}<span class="qc" style="color:${tx.agent.color}">"</span>
+    </p>
+    ${tx.technical?`<pre class="txtech" style="display:${viewMode==='technical'?'block':'none'}">${escHtml(tx.technical)}</pre>`:''}`;
+  document.getElementById('tx-list').appendChild(el);
+  document.getElementById('tx-count').textContent=transmissions.length+' TRANSMISSIONS';
+  scrollLog();
+}
+
+/* ══════════════════════════════════════════════════════
+   HUMAN REVIEW GATE
+══════════════════════════════════════════════════════ */
+function showReviewGate(msg){
+  setStatus('awaiting');
+  document.getElementById('review-msg').textContent=msg;
+  document.getElementById('review-input').value='';
+  document.getElementById('review-gate').style.display='block';
+  // Pulse the human seat
+  setActive(HUMAN.id,null);
+  document.getElementById(`think-${HUMAN.id}`).style.display='none';
+  document.getElementById(`speak-${HUMAN.id}`).style.display='block';
+  return new Promise(resolve=>{humanResolve=resolve});
+}
+
+function humanRespond(action){
+  document.getElementById('review-gate').style.display='none';
+  document.getElementById(`speak-${HUMAN.id}`).style.display='none';
+  const input=document.getElementById('review-input').value.trim();
+  setStatus('running');
+  if(humanResolve){
+    humanResolve({action,input});
+    humanResolve=null;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   API
+══════════════════════════════════════════════════════ */
+function parseResponse(text){
+  if(!text?.trim())return{narrative:'…',technical:''};
+  const nM=text.match(/\[?NARRATIVE\]?:\s*([\s\S]*?)(?=\[?TECHNICAL\]?:|$)/i);
+  const tM=text.match(/\[?TECHNICAL\]?:\s*([\s\S]*)$/i);
+  const n=nM?.[1]?.trim(),t=tM?.[1]?.trim();
+  if(!n&&!t)return{narrative:text.trim(),technical:''};
+  return{narrative:n||text.trim(),technical:t||''};
+}
+
+async function callKing(agent,task,priorTx){
+  const apiKey=document.getElementById('api-key-input').value.trim();
+  if(!apiKey)throw new Error('No API key — enter your Anthropic API key');
+  const ctx=priorTx.length>0
+    ?'\n\nPRIOR COUNCIL TRANSMISSIONS:\n'+priorTx.map(t=>`${t.agentName}:\n${t.narrative}\n${t.technical}`).join('\n\n---\n\n')
+    :'';
+  const ctxBlock = priorTx.length===0 ? buildContextBlock() : ''; // Only inject files on first call
+  const userMsg=`THE COUNCIL HAS BEEN CONVENED FOR THIS TASK:\n${task}${ctxBlock}${ctx}\n\nNow speak, ${agent.name}. Fulfill your mandate.`;
+  let res;
+  try{
+    res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:agent.system,messages:[{role:'user',content:userMsg}]}),
+    });
+  }catch(e){throw new Error('Network error: '+e.message)}
+  if(!res.ok){let m=`HTTP ${res.status}`;try{const b=await res.json();m=b?.error?.message||m}catch(_){}throw new Error(m)}
+  const data=await res.json();
+  const raw=data?.content?.[0]?.text;
+  if(!raw)throw new Error('Empty API response (stop_reason: '+(data?.stop_reason||'unknown')+')');
+  return parseResponse(raw);
+}
+
+/* ══════════════════════════════════════════════════════
+   MAIN ORCHESTRATION
+══════════════════════════════════════════════════════ */
+async function conveneCouncil(){
+  const task=document.getElementById('task-input').value.trim();
+  const apiKey=document.getElementById('api-key-input').value.trim();
+  if(!task)return;
+  if(!apiKey){showError('Enter your Anthropic API key (sk-ant-...) above');return}
+  if(phase==='running')return;
+
+  // Reset
+  transmissions=[];
+  txCounts={arch:0,expo:0,fabr:0,cens:0,user:0};
+  ALL_NODES.forEach(ag=>{
+    document.getElementById(`badge-${ag.id}`).style.display='none';
+    document.getElementById(`speak-${ag.id}`).style.display='none';
+    document.getElementById(`think-${ag.id}`).style.display='none';
+  });
+  document.getElementById('tx-list').innerHTML='';
+  document.getElementById('thinking-el').style.display='none';
+  document.getElementById('done-banner').style.display='none';
+  document.getElementById('error-box').style.display='none';
+  document.getElementById('empty').style.display='none';
+  document.getElementById('review-gate').style.display='none';
+  SEQUENCE.forEach((_,i)=>{const d=document.getElementById(`pdot-${i}`);d.style.width='6px';d.style.background='#1a2030';d.style.boxShadow='none'});
+
+  phase='running';
+  activeSeqIdx=-1;
+  setStatus('running');
+  document.getElementById('input-area').style.display='none';
+  document.getElementById('progress-row').style.display='flex';
+  document.getElementById('vt').style.display='flex';
+
+  const priorCtx=[];
+
+  for(let i=0;i<SEQUENCE.length;i++){
+    const seq=SEQUENCE[i];
+    const agent=ALL_NODES.find(a=>a.id===seq.agentId);
+    const toAg=seq.toId?ALL_NODES.find(a=>a.id===seq.toId):null;
+    activeSeqIdx=i;
+    updateProgress(i);
+
+    /* ── HUMAN GATE ── */
+    if(seq.isHumanGate){
+      const result=await showReviewGate(seq.gateMsg);
+      updateBadge(HUMAN.id);
+      // Log the human response
+      const humanTx={
+        id:Date.now()+i,agent:HUMAN,toAgent:toAg,
+        mode:'peer',label:seq.label,
+        narrative:result.action==='skip'
+          ?"The Commander observes and allows the Council to proceed."
+          :result.action==='reject'
+          :`The Commander redirects: "${result.input||'Reconsider your approach.'}"`
+          :`The Commander approves.${result.input?' Directive: '+result.input:''}`,
+        technical:result.input||'',
+        status:'active',
+      };
+      transmissions.push(humanTx);
+      if(result.input)priorCtx.push({agentName:'Human Commander',narrative:humanTx.narrative,technical:result.input});
+      appendTx(humanTx);
+      setActive(null,null);
+      setStatus('running');
+      await sleep(400);
+      continue;
+    }
+
+    /* ── AI KING ── */
+    setActive(agent.id,seq.toId);
+    setThinking(agent.id);
+    await sleep(300);
+
+    try{
+      const result=await callKing(agent,task,priorCtx);
+      setThinking(null);
+      setSpeaking(agent.id);
+      updateBadge(agent.id);
+
+      const status=agent.id==='cens'
+        ?(result.technical.includes('🚫')?'fail':result.technical.includes('⚠')?'warn':'pass')
+        :'active';
+
+      const tx={id:Date.now()+i,agent,toAgent:toAg,mode:seq.mode,label:seq.label,
+        narrative:result.narrative,technical:result.technical,status};
+      transmissions.push(tx);
+      priorCtx.push({agentName:agent.name,narrative:result.narrative,technical:result.technical});
+      appendTx(tx);
+      await sleep(500);
+
+    }catch(err){
+      setThinking(null);
+      setActive(null,null);
+      showError(`${agent.name}: ${err.message}`);
+      return;
+    }
+  }
+
+  phase='done';
+  activeSeqIdx=-1;
+  setActive(null,null);
+  setStatus('done');
+  document.getElementById('progress-row').style.display='none';
+  document.getElementById('done-banner').style.display='block';
+  document.getElementById('done-sub').textContent=`${transmissions.length} TRANSMISSIONS · MISSION SEALED`;
+  scrollLog();
+}
+
+function showError(msg){
+  phase='error';
+  setStatus('error');
+  setActive(null,null);
+  document.getElementById('progress-row').style.display='none';
+  document.getElementById('input-area').style.display='flex';
+  document.getElementById('error-box').style.display='block';
+  document.getElementById('error-msg').textContent=msg;
+}
+
+function resetSession(){
+  phase='idle';transmissions=[];txCounts={arch:0,expo:0,fabr:0,cens:0,user:0};
+  ALL_NODES.forEach(ag=>{
+    document.getElementById(`badge-${ag.id}`).style.display='none';
+    document.getElementById(`speak-${ag.id}`).style.display='none';
+    document.getElementById(`think-${ag.id}`).style.display='none';
+  });
+  document.getElementById('tx-list').innerHTML='';
+  document.getElementById('thinking-el').style.display='none';
+  document.getElementById('done-banner').style.display='none';
+  document.getElementById('error-box').style.display='none';
+  document.getElementById('empty').style.display='flex';
+  document.getElementById('input-area').style.display='flex';
+  document.getElementById('progress-row').style.display='none';
+  document.getElementById('review-gate').style.display='none';
+  document.getElementById('task-input').value='';
+  setStatus('idle');
+  setActive(null,null);
+}
+
+function setView(mode){
+  viewMode=mode;
+  document.querySelectorAll('.vbtn').forEach(b=>{b.classList.toggle('on',b.textContent.toLowerCase().includes(mode.slice(0,4)))});
+  document.querySelectorAll('.txnar').forEach(e=>{e.style.display=mode==='narrative'?'block':'none'});
+  document.querySelectorAll('.txtech').forEach(e=>{e.style.display=mode==='technical'?'block':'none'});
+}
+
+function setEx(t){document.getElementById('task-input').value=t}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+/* ══════════════════════════════════════════════════════
+   FILE CONTEXT SYSTEM
+══════════════════════════════════════════════════════ */
+let contextFiles = []; // [{name, content, size}]
+let contextTokenEstimate = 0;
+
+function toggleCtx() {
+  const body = document.getElementById('ctx-body');
+  const toggle = document.getElementById('ctx-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+  toggle.querySelector('.arrow').textContent = isOpen ? '▾' : '▴';
+}
+
+function handleDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('file-drop').classList.remove('drag');
+  handleFiles(ev.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  const allowed = ['.js','.ts','.jsx','.tsx','.py','.go','.rs','.java','.cs','.cpp','.c','.h',
+    '.sql','.md','.txt','.json','.yaml','.yml','.toml','.sh','.env','.gitignore','.lock'];
+  Array.from(files).forEach(file => {
+    const ext = file.name.includes('.') ? '.'+file.name.split('.').pop().toLowerCase() : '';
+    if(file.size > 200000) { alert(`${file.name} is too large (max 200KB)`); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const existing = contextFiles.findIndex(f => f.name === file.name);
+      const entry = {name: file.name, content: e.target.result, size: file.size};
+      if(existing >= 0) contextFiles[existing] = entry;
+      else contextFiles.push(entry);
+      renderCtxFiles();
+    };
+    reader.readAsText(file);
+  });
+}
+
+async function loadGithub() {
+  const raw = document.getElementById('gh-input').value.trim();
+  if(!raw) return;
+  const btn = document.getElementById('btn-gh-load');
+  btn.textContent = '⟳ LOADING...'; btn.disabled = true;
+  try {
+    // Convert github.com URL to raw content
+    let url = raw;
+    if(url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
+      // Handle repo URL — fetch README as sample
+      url = url.replace('github.com','raw.githubusercontent.com')
+               .replace('/blob/','/')
+               .replace(/\/$/, '');
+      if(!url.includes('/raw.githubusercontent.com/') || !raw.includes('/blob/')) {
+        // It's a repo root — fetch the tree via API
+        const repoPath = raw.replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');
+        const apiUrl = `https://api.github.com/repos/${repoPath}/contents`;
+        const res = await fetch(apiUrl);
+        if(!res.ok) throw new Error(`GitHub API: ${res.status}`);
+        const files = await res.json();
+        // Load top-level text files
+        const textFiles = files.filter(f => f.type==='file' && f.size < 100000 &&
+          ['.md','.json','.toml','.yaml','.yml','.txt','.go','.py','.js','.ts','.rs'].some(e=>f.name.endsWith(e)));
+        let loaded = 0;
+        for(const f of textFiles.slice(0, 8)) {
+          const r = await fetch(f.download_url);
+          if(r.ok) {
+            const text = await r.text();
+            contextFiles.push({name: f.name, content: text, size: f.size});
+            loaded++;
+          }
+        }
+        renderCtxFiles();
+        btn.textContent = `✓ ${loaded} FILES LOADED`;
+        setTimeout(()=>{btn.textContent='⬇ LOAD';btn.disabled=false},2000);
+        return;
+      }
+    }
+    // Direct file URL
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const name = url.split('/').pop() || 'context.txt';
+    contextFiles.push({name, content:text, size:text.length});
+    renderCtxFiles();
+    btn.textContent = '✓ LOADED';
+  } catch(e) {
+    btn.textContent = '✗ FAILED';
+    alert('Load failed: '+e.message);
+  }
+  setTimeout(()=>{btn.textContent='⬇ LOAD';btn.disabled=false},2000);
+}
+
+function removeCtxFile(name) {
+  contextFiles = contextFiles.filter(f => f.name !== name);
+  renderCtxFiles();
+}
+
+function renderCtxFiles() {
+  const el = document.getElementById('ctx-files');
+  el.innerHTML = contextFiles.map(f => `
+    <div class="ctx-file">
+      <div class="ctx-file-name">${escHtml(f.name)}</div>
+      <div class="ctx-file-size">${(f.size/1024).toFixed(1)}KB</div>
+      <div class="ctx-rm" onclick="removeCtxFile('${f.name.replace(/'/g,"\'")}')">✕</div>
+    </div>`).join('');
+  const totalChars = contextFiles.reduce((a,f)=>a+f.content.length, 0);
+  contextTokenEstimate = Math.round(totalChars / 4);
+  const badge = document.getElementById('ctx-count-badge');
+  const summary = document.getElementById('ctx-summary');
+  if(contextFiles.length > 0) {
+    badge.textContent = `(${contextFiles.length} FILE${contextFiles.length>1?'S':''})`;
+    badge.style.color = 'var(--expo)';
+    summary.textContent = `~${contextTokenEstimate.toLocaleString()} tokens · ${(totalChars/1024).toFixed(1)}KB total`;
+  } else {
+    badge.textContent = '';
+    summary.textContent = '';
+  }
+}
+
+function buildContextBlock() {
+  if(contextFiles.length === 0) return '';
+  const parts = contextFiles.map(f =>
+    `### ${f.name}\n\`\`\`\n${f.content.slice(0, 8000)}${f.content.length>8000?'\n... [truncated]':''}\`\`\``
+  ).join('\n\n');
+  return `\n\n---\nCODEBASE CONTEXT (${contextFiles.length} files provided by the Commander):\n\n${parts}\n---`;
+}
+
+/* ══════════════════════════════════════════════════════
+   EXPORT ENGINE
+══════════════════════════════════════════════════════ */
+function getSessionName() {
+  return document.getElementById('session-name').value.trim() || 'council-session';
+}
+
+function downloadFile(filename, content, type='text/plain') {
+  const blob = new Blob([content], {type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportMarkdown() {
+  const session = getSessionName();
+  const date = new Date().toISOString().slice(0,10);
+  const task = document.getElementById('task-input').value.trim();
+  
+  let md = `# Council of Kings — Decision Record\n`;
+  md += `**Session:** ${session}  \n`;
+  md += `**Date:** ${date}  \n`;
+  md += `**Task:** ${task}  \n\n`;
+  
+  if(contextFiles.length > 0) {
+    md += `**Codebase Context:** ${contextFiles.map(f=>f.name).join(', ')}  \n\n`;
+  }
+  
+  md += `---\n\n`;
+  
+  transmissions.forEach((tx, i) => {
+    md += `## ${i+1}. ${tx.agent.name} — ${tx.label}\n`;
+    md += `*${tx.mode === 'broadcast' ? '📢 Broadcast to all Kings' : `⇢ Directed to ${tx.toAgent?.name||'Council'}`}*\n\n`;
+    if(tx.narrative) md += `> ${tx.narrative}\n\n`;
+    if(tx.technical) md += `\`\`\`\n${tx.technical}\n\`\`\`\n\n`;
+    if(tx.status === 'pass') md += `✅ **Security Status: ALL CLEAR**\n\n`;
+    if(tx.status === 'warn') md += `⚠️ **Security Status: CONDITIONAL PASS**\n\n`;
+    if(tx.status === 'fail') md += `🚫 **Security Status: BLOCKED**\n\n`;
+    md += `---\n\n`;
+  });
+  
+  md += `*Generated by Project Regalis — Council of Kings*\n`;
+  downloadFile(`${session}-${date}-decision-record.md`, md, 'text/markdown');
+}
+
+async function exportZip() {
+  if(typeof JSZip === 'undefined') {
+    alert('JSZip library failed to load. Check your internet connection and try again.');
+    return;
+  }
+
+  const session = getSessionName();
+  const date = new Date().toISOString().slice(0,10);
+  const task = document.getElementById('task-input').value.trim();
+  const fabrications = transmissions.filter(tx => tx.agent.id === 'fabr' && tx.technical);
+
+  if(fabrications.length === 0) {
+    alert('No code files found in this session. Run the Council first.');
+    return;
+  }
+
+  const zip = new JSZip();
+  const folderName = `${session}-${date}`;
+  const codeFolder = zip.folder(folderName);
+
+  // ── Code files from Fabricator ──
+  const usedNames = {};
+  fabrications.forEach((tx, i) => {
+    const lines = tx.technical.split('\n');
+    let filename = lines[0].replace(/^[#/*\s]+/, '').trim();
+    // Ensure filename has an extension; fall back to .txt
+    if(!filename || !/\.\w+$/.test(filename)) filename = `output-${i+1}.txt`;
+    // Deduplicate filenames
+    if(usedNames[filename] !== undefined) {
+      usedNames[filename]++;
+      const dot = filename.lastIndexOf('.');
+      filename = dot > -1
+        ? filename.slice(0, dot) + `-${usedNames[filename]}` + filename.slice(dot)
+        : filename + `-${usedNames[filename]}`;
+    } else {
+      usedNames[filename] = 0;
+    }
+    const code = lines.slice(1).join('\n').trim();
+    codeFolder.file(filename, code);
+  });
+
+  // ── Decision Record (.md) ──
+  let md = `# Council of Kings — Decision Record\n`;
+  md += `**Session:** ${session}  \n**Date:** ${date}  \n**Task:** ${task}  \n\n---\n\n`;
+  transmissions.forEach((tx, i) => {
+    md += `## ${i+1}. ${tx.agent.name} — ${tx.label}\n`;
+    if(tx.narrative) md += `> ${tx.narrative}\n\n`;
+    if(tx.technical) md += `\`\`\`\n${tx.technical}\n\`\`\`\n\n`;
+    if(tx.status === 'pass') md += `✅ **Security: ALL CLEAR**\n\n`;
+    if(tx.status === 'warn') md += `⚠️ **Security: CONDITIONAL PASS**\n\n`;
+    if(tx.status === 'fail') md += `🚫 **Security: BLOCKED**\n\n`;
+    md += `---\n\n`;
+  });
+  md += `*Generated by Project Regalis — Council of Kings*\n`;
+  codeFolder.file('DECISION_RECORD.md', md);
+
+  // ── PR Description (.txt) ──
+  const arch = transmissions.find(tx => tx.agent.id === 'arch');
+  const fabr = transmissions.find(tx => tx.agent.id === 'fabr');
+  const lastCens = [...transmissions].reverse().find(tx => tx.agent.id === 'cens');
+  let pr = `## Summary\n\n${task}\n\n`;
+  if(arch?.narrative) pr += `## Architecture\n\n${arch.narrative}\n\n`;
+  if(fabr?.technical) pr += `## Implementation\n\n\`\`\`\n${fabr.technical}\n\`\`\`\n\n`;
+  if(lastCens) {
+    const icon = lastCens.status==='pass'?'✅':lastCens.status==='warn'?'⚠️':'🚫';
+    pr += `## Security Audit\n\n${icon} ${lastCens.technical||''}\n\n`;
+  }
+  pr += `---\n*Generated by Project Regalis — Council of Kings*\n`;
+  codeFolder.file('PR_DESCRIPTION.txt', pr);
+
+  // ── Generate and download ──
+  const btn = document.querySelector('.exp-btn-zip');
+  const origText = btn.textContent;
+  btn.textContent = '⟳ FORGING...';
+  btn.disabled = true;
+
+  try {
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${folderName}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = '✓ SEALED';
+    setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 2000);
+  } catch(err) {
+    btn.textContent = '✗ FAILED';
+    btn.disabled = false;
+    console.error('exportZip:', err);
+    setTimeout(() => { btn.textContent = origText; }, 2000);
+  }
+}
+
+function exportPR() {
+  const session = getSessionName();
+  const date = new Date().toISOString().slice(0,10);
+  const task = document.getElementById('task-input').value.trim();
+  const arch = transmissions.find(tx=>tx.agent.id==='arch');
+  const expo = transmissions.find(tx=>tx.agent.id==='expo');
+  const fabr = transmissions.find(tx=>tx.agent.id==='fabr');
+  const lastCens = [...transmissions].reverse().find(tx=>tx.agent.id==='cens');
+  const humanTx = transmissions.find(tx=>tx.agent.isHuman);
+  
+  let pr = `## Summary\n\n`;
+  pr += `${task}\n\n`;
+  
+  if(arch) {
+    pr += `## Architecture\n\n`;
+    pr += `${arch.narrative}\n\n`;
+    if(arch.technical) pr += `\`\`\`\n${arch.technical}\n\`\`\`\n\n`;
+  }
+  
+  if(expo) {
+    pr += `## Dependencies & Research\n\n`;
+    if(expo.technical) pr += `\`\`\`\n${expo.technical}\n\`\`\`\n\n`;
+  }
+  
+  pr += `## Changes\n\n`;
+  transmissions.filter(tx=>tx.agent.id==='fabr'&&tx.technical).forEach((tx,i) => {
+    pr += `### ${i===0?'Initial Build':'Revision'}: ${tx.label}\n\n`;
+    pr += `\`\`\`\n${tx.technical}\n\`\`\`\n\n`;
+  });
+  
+  if(lastCens) {
+    pr += `## Security Review\n\n`;
+    const statusLine = lastCens.status==='pass'?'✅ ALL CLEAR':lastCens.status==='warn'?'⚠️ CONDITIONAL PASS':'🚫 BLOCKED';
+    pr += `**Rex Censor verdict:** ${statusLine}\n\n`;
+    if(lastCens.technical) pr += `\`\`\`\n${lastCens.technical}\n\`\`\`\n\n`;
+  }
+  
+  if(humanTx && humanTx.technical) {
+    pr += `## Commander Notes\n\n${humanTx.narrative}\n\n`;
+  }
+  
+  pr += `---\n*Generated by Project Regalis — Council of Kings · ${date}*\n`;
+  downloadFile(`${session}-${date}-pr-description.txt`, pr);
+}
+
+init();
+</script>
+</body>
+</html>
