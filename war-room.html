@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Project Regalis — War Room</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHveA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1306,59 +1307,98 @@ function exportMarkdown() {
   downloadFile(`${session}-${date}-decision-record.md`, md, 'text/markdown');
 }
 
-function exportZip() {
-  // Extract all code blocks from Fabricator transmissions
+async function exportZip() {
+  if(typeof JSZip === 'undefined') {
+    alert('JSZip library failed to load. Check your internet connection and try again.');
+    return;
+  }
+
   const session = getSessionName();
   const date = new Date().toISOString().slice(0,10);
+  const task = document.getElementById('task-input').value.trim();
   const fabrications = transmissions.filter(tx => tx.agent.id === 'fabr' && tx.technical);
-  
+
   if(fabrications.length === 0) {
     alert('No code files found in this session. Run the Council first.');
     return;
   }
-  
-  // Build a self-extracting HTML with all files embedded
-  // (Real zip would need JSZip library — we embed files in a structured HTML report)
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-<title>${session} — Code Output</title>
-<style>
-body{font-family:monospace;background:#05070D;color:#C2CCE0;margin:0;padding:24px}
-h1{color:#C9832A;letter-spacing:3px;font-size:14px;margin-bottom:4px}
-.meta{color:#3a4050;font-size:10px;letter-spacing:2px;margin-bottom:24px}
-h2{color:#1A6FBF;font-size:11px;letter-spacing:2px;margin:24px 0 8px;border-bottom:1px solid #1a1a2a;padding-bottom:6px}
-.file-label{font-size:9px;color:#147A52;letter-spacing:2px;margin-bottom:6px}
-pre{background:#030508;border:1px solid #1a2030;padding:16px;border-radius:4px;overflow-x:auto;
-    font-size:12px;line-height:1.7;color:#7ab8e8;white-space:pre-wrap;word-break:break-all}
-.copy-btn{float:right;padding:3px 8px;font-size:8px;letter-spacing:1px;cursor:pointer;
-  border:1px solid #1A6FBF;background:transparent;color:#1A6FBF;border-radius:2px;font-family:monospace}
-.audit{background:#130606;border:1px solid #B0202044;padding:16px;border-radius:4px;margin-top:16px}
-.audit h3{color:#B02020;font-size:10px;letter-spacing:2px;margin-bottom:8px}
-</style></head><body>
-<h1>♔ PROJECT REGALIS — CODE OUTPUT</h1>
-<div class="meta">SESSION: ${session.toUpperCase()} · DATE: ${date} · ${fabrications.length} FILE(S)</div>`;
 
+  const zip = new JSZip();
+  const folderName = `${session}-${date}`;
+  const codeFolder = zip.folder(folderName);
+
+  // ── Code files from Fabricator ──
+  const usedNames = {};
   fabrications.forEach((tx, i) => {
     const lines = tx.technical.split('\n');
-    const filename = lines[0].replace(/^[#/\/\* ]+/, '').trim() || `output-${i+1}.txt`;
+    let filename = lines[0].replace(/^[#/*\s]+/, '').trim();
+    // Ensure filename has an extension; fall back to .txt
+    if(!filename || !/\.\w+$/.test(filename)) filename = `output-${i+1}.txt`;
+    // Deduplicate filenames
+    if(usedNames[filename] !== undefined) {
+      usedNames[filename]++;
+      const dot = filename.lastIndexOf('.');
+      filename = dot > -1
+        ? filename.slice(0, dot) + `-${usedNames[filename]}` + filename.slice(dot)
+        : filename + `-${usedNames[filename]}`;
+    } else {
+      usedNames[filename] = 0;
+    }
     const code = lines.slice(1).join('\n').trim();
-    html += `<h2>FILE ${i+1}: ${filename}</h2>
-<div class="file-label">${tx.label}</div>
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelectorAll('pre')[${i}].textContent)">COPY</button>
-<pre>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`;
+    codeFolder.file(filename, code);
   });
-  
-  // Append audit if available
-  const audits = transmissions.filter(tx => tx.agent.id === 'cens' && tx.technical);
-  if(audits.length > 0) {
-    html += `<div class="audit"><h3>⚔ SECURITY AUDIT — REX CENSOR</h3>`;
-    audits.forEach(a => {
-      html += `<pre>${a.technical.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`;
-    });
-    html += `</div>`;
+
+  // ── Decision Record (.md) ──
+  let md = `# Council of Kings — Decision Record\n`;
+  md += `**Session:** ${session}  \n**Date:** ${date}  \n**Task:** ${task}  \n\n---\n\n`;
+  transmissions.forEach((tx, i) => {
+    md += `## ${i+1}. ${tx.agent.name} — ${tx.label}\n`;
+    if(tx.narrative) md += `> ${tx.narrative}\n\n`;
+    if(tx.technical) md += `\`\`\`\n${tx.technical}\n\`\`\`\n\n`;
+    if(tx.status === 'pass') md += `✅ **Security: ALL CLEAR**\n\n`;
+    if(tx.status === 'warn') md += `⚠️ **Security: CONDITIONAL PASS**\n\n`;
+    if(tx.status === 'fail') md += `🚫 **Security: BLOCKED**\n\n`;
+    md += `---\n\n`;
+  });
+  md += `*Generated by Project Regalis — Council of Kings*\n`;
+  codeFolder.file('DECISION_RECORD.md', md);
+
+  // ── PR Description (.txt) ──
+  const arch = transmissions.find(tx => tx.agent.id === 'arch');
+  const fabr = transmissions.find(tx => tx.agent.id === 'fabr');
+  const lastCens = [...transmissions].reverse().find(tx => tx.agent.id === 'cens');
+  let pr = `## Summary\n\n${task}\n\n`;
+  if(arch?.narrative) pr += `## Architecture\n\n${arch.narrative}\n\n`;
+  if(fabr?.technical) pr += `## Implementation\n\n\`\`\`\n${fabr.technical}\n\`\`\`\n\n`;
+  if(lastCens) {
+    const icon = lastCens.status==='pass'?'✅':lastCens.status==='warn'?'⚠️':'🚫';
+    pr += `## Security Audit\n\n${icon} ${lastCens.technical||''}\n\n`;
   }
-  
-  html += `</body></html>`;
-  downloadFile(`${session}-${date}-code-output.html`, html, 'text/html');
+  pr += `---\n*Generated by Project Regalis — Council of Kings*\n`;
+  codeFolder.file('PR_DESCRIPTION.txt', pr);
+
+  // ── Generate and download ──
+  const btn = document.querySelector('.exp-btn-zip');
+  const origText = btn.textContent;
+  btn.textContent = '⟳ FORGING...';
+  btn.disabled = true;
+
+  try {
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${folderName}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = '✓ SEALED';
+    setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 2000);
+  } catch(err) {
+    btn.textContent = '✗ FAILED';
+    btn.disabled = false;
+    console.error('exportZip:', err);
+    setTimeout(() => { btn.textContent = origText; }, 2000);
+  }
 }
 
 function exportPR() {

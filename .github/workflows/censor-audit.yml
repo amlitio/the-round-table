@@ -1,0 +1,11 @@
+name: "Rex Censor Audit"
+on: [pull_request]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Censor Review"
+        run: |
+          echo "Rex Censor is scanning for vulnerabilities..."
+          # Integrate your security scanning tools here
