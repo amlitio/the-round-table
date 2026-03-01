@@ -12,6 +12,7 @@
   --expo:#1A6FBF;--expo-a:#7AC5FF;
   --fabr:#147A52;--fabr-a:#5BFFAA;
   --cens:#B02020;--cens-a:#FF8888;
+  --motr:#1E8A9A;--motr-a:#5BE0EE;
   --user:#8855CC;--user-a:#CC99FF;
   --bg:#05070D;--surf:#090B14;--edge:#14161F;--muted:#3a4050;--text:#C2CCE0;
 }
@@ -591,6 +592,52 @@ const FACES = {
   <path d="M43 37 L41 51 Q46 54 51 51 L49 37" fill="#8A6030" opacity=".4"/>
 </svg>`,
 
+  /* REX MOTORUM — naval fleet-master, admiral's coat, sextant at belt, teal-eyed */
+  motr:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
+  <!-- Neck -->
+  <rect x="33" y="60" width="26" height="13" rx="2" fill="#8A7050"/>
+  <!-- Admiral's coat — deep navy -->
+  <path d="M12 70 Q10 56 22 54 L70 54 Q82 56 80 70 L82 92 Q46 96 10 92Z" fill="#0A1628"/>
+  <!-- Gold frogging across chest -->
+  <path d="M30 58 Q38 56 46 58 Q54 56 62 58" stroke="#1E8A9A" stroke-width="1.5" fill="none" opacity=".7"/>
+  <path d="M28 63 Q38 61 46 63 Q54 61 64 63" stroke="#1E8A9A" stroke-width="1.2" fill="none" opacity=".5"/>
+  <!-- Epaulettes — fleet gold -->
+  <ellipse cx="18" cy="60" rx="9" ry="4" fill="#1A5A68" transform="rotate(-20,18,60)"/>
+  <ellipse cx="74" cy="60" rx="9" ry="4" fill="#1A5A68" transform="rotate(20,74,60)"/>
+  <line x1="12" y1="58" x2="20" y2="64" stroke="#5BE0EE" stroke-width="1" opacity=".5"/>
+  <line x1="80" y1="58" x2="72" y2="64" stroke="#5BE0EE" stroke-width="1" opacity=".5"/>
+  <!-- Sextant at belt -->
+  <circle cx="56" cy="72" r="5" fill="none" stroke="#1E8A9A" stroke-width="1.5" opacity=".8"/>
+  <line x1="56" y1="67" x2="56" y2="72" stroke="#5BE0EE" stroke-width="1" opacity=".7"/>
+  <line x1="56" y1="72" x2="60" y2="75" stroke="#5BE0EE" stroke-width="1" opacity=".7"/>
+  <!-- Face — weathered, sea-hardened, broad -->
+  <ellipse cx="46" cy="38" rx="19" ry="21" fill="#A07850"/>
+  <!-- Wind-carved brows — heavy, flat -->
+  <path d="M27 28 Q34 22 42 26" stroke="#1A0C04" stroke-width="3" fill="none"/>
+  <path d="M50 26 Q58 22 65 28" stroke="#1A0C04" stroke-width="3" fill="none"/>
+  <!-- Teal-lit eyes — horizon watchers -->
+  <ellipse cx="37" cy="35" rx="4.5" ry="5" fill="#040E14"/>
+  <ellipse cx="55" cy="35" rx="4.5" ry="5" fill="#040E14"/>
+  <ellipse cx="37.5" cy="33.2" rx="1.8" ry="2" fill="#fff" opacity=".65"/>
+  <ellipse cx="55.5" cy="33.2" rx="1.8" ry="2" fill="#fff" opacity=".65"/>
+  <circle cx="38.5" cy="35.5" r="1.5" fill="#1E8A9A" opacity=".85"/>
+  <circle cx="56.5" cy="35.5" r="1.5" fill="#1E8A9A" opacity=".85"/>
+  <!-- Sun-weathered lines at eye corners -->
+  <path d="M28 34 Q26 38 27 42" stroke="#7A5A30" stroke-width=".8" fill="none" opacity=".5"/>
+  <path d="M64 34 Q66 38 65 42" stroke="#7A5A30" stroke-width=".8" fill="none" opacity=".5"/>
+  <!-- Salt-and-pepper close beard -->
+  <path d="M28 48 Q26 60 32 66 Q40 73 46 74 Q52 73 60 66 Q66 60 64 48 Q55 56 46 57 Q37 56 28 48Z" fill="#2A2A2A" opacity=".85"/>
+  <path d="M34 58 Q46 65 58 58" stroke="#4A4A4A" stroke-width="1" fill="none" opacity=".4"/>
+  <!-- Nose — straight, strong -->
+  <path d="M44 38 L43 50 Q46 54 49 50 L48 38" fill="#906040" opacity=".4"/>
+  <!-- Resolute flat mouth -->
+  <path d="M33 54 Q46 59 59 54" stroke="#6A3A20" stroke-width="1.8" fill="none"/>
+  <!-- Admiral's peaked cap brim hint -->
+  <path d="M24 18 Q28 8 46 6 Q64 8 68 18 Q60 12 46 11 Q32 12 24 18Z" fill="#0A1628" opacity=".95"/>
+  <path d="M24 18 Q34 14 46 13 Q58 14 68 18" fill="none" stroke="#1E8A9A" stroke-width="1.2" opacity=".6"/>
+  <rect x="28" y="16" width="36" height="2.5" rx="1" fill="#1E8A9A" opacity=".5"/>
+</svg>`,
+
   /* HUMAN COMMANDER — the user's seat — distinguished, modern, observant */
   user:`<svg viewBox="0 0 92 92" width="92" height="92" xmlns="http://www.w3.org/2000/svg">
   <!-- Neck -->
@@ -671,12 +718,21 @@ Respond in EXACTLY this format:
 [TECHNICAL]:
 <PASS/WARN/FAIL [CODE-###] findings.
 Final line: STATUS: ✅ ALL CLEAR / ⚠ CONDITIONAL PASS (N warnings) / 🚫 BLOCKED (N failures)>`},
-  {id:'user',seat:4,name:'Commander',title:'Human Authority',color:'#8855CC',accent:'#CC99FF',isHuman:true,system:null},
+  {id:'motr',seat:4,name:'Rex Motorum',title:'Fleet Master',color:'#1E8A9A',accent:'#5BE0EE',isHuman:false,
+   system:`You are REX MOTORUM, the Fleet Master of the Council of Kings.
+Generate ONLY Docker, CI/CD, deployment, and infrastructure configurations. Never write application code.
+Respond in EXACTLY this format:
+
+[NARRATIVE]: <1-3 sentences. Admiral commanding the deployment fleet.>
+
+[TECHNICAL]:
+<Complete Dockerfile, docker-compose.yml, GitHub Actions workflow, or deployment config. Filename as comment at top.>`},
+  {id:'user',seat:5,name:'Commander',title:'Human Authority',color:'#8855CC',accent:'#CC99FF',isHuman:true,system:null},
 ];
 
 const AGENTS = ALL_NODES.filter(n=>!n.isHuman);
 const HUMAN  = ALL_NODES.find(n=>n.isHuman);
-const TOTAL_SEATS = 5;
+const TOTAL_SEATS = 6;
 
 /* Sequence — includes a human review checkpoint after Fabricator's first build */
 const SEQUENCE = [
@@ -688,6 +744,7 @@ const SEQUENCE = [
   {agentId:'cens', toId:'fabr',        mode:'peer',      label:'SECURITY AUDIT'},
   {agentId:'fabr', toId:'cens',        mode:'peer',      label:'RESOLVING FINDINGS'},
   {agentId:'cens', toId:'user',        mode:'peer',      label:'FINAL SEAL'},
+  {agentId:'motr', toId:null,          mode:'broadcast', label:'DEPLOYING FLEET'},
 ];
 
 /* ══════════════════════════════════════════════════════
@@ -704,7 +761,7 @@ let viewMode='narrative';
 let transmissions=[];
 let activeSeqIdx=-1;
 let humanResolve=null;
-let txCounts={arch:0,expo:0,fabr:0,cens:0,user:0};
+let txCounts={arch:0,expo:0,fabr:0,cens:0,motr:0,user:0};
 
 /* ══════════════════════════════════════════════════════
    INIT
